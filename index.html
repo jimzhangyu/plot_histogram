@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>d3.js learning</title>
+  <script src="https://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+
+  <label for="top10">Top 10 Most Happy Country:</label>
+  <select id="ddlViewBy">
+    <option value="2019.csv" selected="selected">2019</option>
+    <option value="2018.csv" >2018</option>
+    <option value="2017.csv">2017</option>
+    <option value="2016.csv">2016</option>
+    <option value="2015.csv">2015</option>
+    <input type="button" id="theButton1" value="Click me">
+  </select>
+  <style type="text/css">
+  svg {
+    font: 10px sans-serif;
+    shape-rendering: crispEdges;
+  }
+
+  .axis path,
+  .axis line {
+    fill: none;
+    stroke: #000;
+  }
+ 
+  path.domain {
+    stroke: none;
+  }
+ 
+  .y .tick line {
+    stroke: #ddd;
+  }
+  </style>
+
+</head>
+<body>
+<h2> &nbsp &nbsp &nbsp  &nbsp &nbsp &nbsp &nbsp &nbsp &nbsp &nbsp &nbsp &nbsp &nbsp &nbsp &nbsp &nbsp &nbsp &nbsp &nbsp &nbsp &nbsp &nbsp &nbsp  &nbsp &nbsp &nbsp &nbsp &nbsp &nbsp &nbsp &nbsp Happiness Score by Country</h2>
+<script type="text/javascript">
+jQuery(function($) {
+
+$("#theButton1").click(function() {
+
+    var e = document.getElementById("ddlViewBy");
+    var happinessFile = e.value;
+   console.log(happinessFile);
+
+   plot_hist(happinessFile)
+
+});
+
+});
+
+var margin = {top: 20, right: 160, bottom: 35, left: 30};
+
+var width = 1200 - margin.left - margin.right,
+    height = 500 - margin.top - margin.bottom;
+
+var svg = d3.select("body")
+  .append("svg")
+  .attr("width", width + margin.left + margin.right + 100)
+  .attr("height", height + margin.top + margin.bottom)
+  .append("g")
+  .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+
+function plot_hist(file) {
+  // d3.selectAll("svg>*").remove();
+
+
+d3.csv(file, function(data) {
+  d3.selectAll('svg > g > *').remove();
+
+data = data.slice(0, 10);
+
+					
+
+
+var dataset = d3.layout.stack()(["GDP per capita", "Social support", "Healthy life expectancy", "Freedom to make life choices", "Generosity", "Perceptions of corruption"].map(function(fruit) {
+  return data.map(function(d) {
+    // console.log(d)
+    return {x: d["Country"], y: +d[fruit]};
+  });
+}));
+
+// Set x, y and colors
+var x = d3.scale.ordinal()
+  .domain(dataset[0].map(function(d) { return d.x; }))
+  .rangeRoundBands([10, width-10], 0.1);
+
+var y = d3.scale.linear()
+  .domain([0, d3.max(dataset, function(d) {  return d3.max(d, function(d) { return d.y0 + d.y; });  })])
+  .range([height, 0]);
+
+var colors = ["#006990", "#069da4", "#dbf500", "#fbbe15", "#fe6331", "#eb008b"];
+// , "#bb9bca"
+// , "#bb9bca"
+
+// Define and draw axes
+var yAxis = d3.svg.axis()
+  .scale(y)
+  .orient("left")
+  .ticks(5)
+  .tickSize(-width, 0, 0)
+  .tickFormat( function(d) { return d } );
+
+var xAxis = d3.svg.axis()
+  .scale(x)
+  .orient("bottom")
+  .tickFormat( function(d) { return d } );
+//   .tickFormat(d3.time.format("%Y"));
+
+
+svg.append("g")
+  .attr("class", "y axis")
+  .attr("font-weight", 600)
+  .attr("font-size", 12)
+  .call(yAxis);
+
+svg.append("g")
+  .attr("class", "x axis")
+  .attr("transform", "translate(0," + height + ")")
+  .attr("font-weight", 600)
+  .attr("font-size", 12)
+  .call(xAxis);
+
+
+// Create groups for each series, rects for each segment 
+var groups = svg.selectAll("g.cost")
+  .data(dataset)
+  .enter().append("g")
+  .attr("class", "cost")
+  .style("fill", function(d, i) {return colors[i]; });
+
+// console.log(groups);
+
+var rect = groups.selectAll("rect")
+  .data(function(d) { return d; })
+  .enter()
+  .append("rect")
+  .attr("x", function(d) { return x(d.x); })
+  .attr("y", function(d) { return y(d.y0 + d.y); })
+  .attr("height", function(d) { return y(d.y0) - y(d.y0 + d.y); })
+  .attr("width", x.rangeBand())
+  .on("mouseover", function() { tooltip.style("display", null); })
+  .on("mouseout", function() { tooltip.style("display", "none"); })
+  .on("mousemove", function(d, i) {
+    var xPosition = d3.mouse(this)[0] - 15;
+    var yPosition = d3.mouse(this)[1] - 25;
+    tooltip.attr("transform", "translate(" + xPosition + "," + yPosition + ")");
+    tooltip.select("text").text("Contribution: "+d3.format(".3f")(d.y))
+  });
+
+
+
+// Draw legend
+var legend = svg.selectAll(".legend")
+  .data(colors)
+  .enter().append("g")
+  .attr("class", "legend")
+  .attr("transform", function(d, i) { return "translate(30," + i * 22 + ")"; });
+ 
+legend.append("rect")
+  .attr("x", width - 18)
+  .attr("width", 18)
+  .attr("height", 18)
+  .style("fill", function(d, i) {return colors.slice().reverse()[i];});
+ 
+legend.append("text")
+  .attr("x", width + 7)
+  .attr("y", 9)
+  .attr("dy", ".35em")
+  .style("text-anchor", "start")
+  .attr("font-weight", 600)
+  .attr("font-size", 14)
+  .text(function(d, i) { 
+    switch (i) {
+      case 0: return "Trust Government Corruption";
+      case 1: return "Generosity";
+      case 2: return "Freedom";
+      case 3: return "Life Expectancy" ;
+      case 4: return "Social support";
+      case 5: return "GDP per Capita";
+    }
+  });
+  // case 0: return "Dystopia";
+
+
+// Prep the tooltip bits, initial display is hidden
+var tooltip = svg.append("g")
+  .attr("class", "tooltip")
+  .style("display", "none");
+
+// const tooltip = d3.tip()
+tooltip.append("rect")
+  .attr("width", 150)
+  .attr("height", 20)
+  .attr("fill", "white")
+  .style("opacity", 0.5)
+  .attr("x", "-6em");
+
+tooltip.append("text")
+  .attr("x", 15)
+  .attr("dy", "1.2em")
+  .style("text-anchor", "middle")
+  .attr("font-size", "12px")
+  .attr("font-weight", "bold");
+
+});
+}
+
+</script>
+</body>
+</html>
